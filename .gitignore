@@ -1,0 +1,27 @@
+# Archivos y directorios de Python
+*.pyc
+__pycache__/
+venv/
+
+# Archivos de entorno
+*.env
+
+# Archivos de log
+*.log
+
+# Directorios de construcción
+dist/
+build/
+
+# Configuración de IDE
+.vscode/
+.idea/
+*.iml
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Archivos específicos del proyecto
+*.tmp
+static/uploads/

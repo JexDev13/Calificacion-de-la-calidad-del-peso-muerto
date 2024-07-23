@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Posture Analysis</title>
+    <style>
+        video {
+            border: 2px solid black;
+            width: 80%;
+            height: auto;
+        }
+        #results {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>AI Posture Analysis</h1>
+    <video id="video" autoplay></video>
+    <button id="startButton">Start Analysis</button>
+    <div id="results"></div>
+    <script>
+        const video = document.getElementById('video');
+        const startButton = document.getElementById('startButton');
+        const resultsDiv = document.getElementById('results');
+        let streaming = false;
+
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    video.srcObject = stream;
+                    video.play();
+                })
+                .catch(err => {
+                    console.error("Error accessing the camera: ", err);
+                });
+        } else {
+            alert("getUserMedia is not supported in this browser.");
+        }
+
+        function captureFrame() {
+            if (!streaming) return;
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob(blob => {
+                sendFrame(blob);
+            }, 'image/jpeg');
+        }
+
+        function sendFrame(blob) {
+            const formData = new FormData();
+            formData.append('file', blob, 'frame.jpg');
+
+            fetch('http://192.168.1.25:8000/predict', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                displayResults(data);
+                setTimeout(captureFrame, 1000); // Capture next frame after 1 second
+            })
+            .catch(error => {
+                console.error("Error sending frame: ", error);
+                setTimeout(captureFrame, 1000); // Retry after 1 second in case of error
+            });
+        }
+
+        function displayResults(data) {
+            resultsDiv.innerHTML = `
+                <p>Class: ${data.class}</p>
+                <p>Probability: ${data.probability}</p>
+                <p>Lean Class: ${data.lean_class}</p>
+                <p>Lean Probability: ${data.lean_prob}</p>
+                <p>Hips Class: ${data.hips_class}</p>
+                <p>Hips Probability: ${data.hips_prob}</p>
+                <p>Advice: ${data.advice}</p>
+                <p>Repetitions: ${data.repetitions}</p>
+            `;
+        }
+
+        startButton.addEventListener('click', () => {
+            streaming = true;
+            captureFrame();
+        });
+    </script>
+</body>
+</html>
