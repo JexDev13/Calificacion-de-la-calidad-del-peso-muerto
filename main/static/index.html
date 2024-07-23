@@ -16,13 +16,25 @@
             font-size: 1.2em;
             margin-top: 10px;
         }
+        button {
+            margin: 5px;
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
     <h1>AI Posture Analysis</h1>
     <video id="video" autoplay></video>
-    <div id="timer">Timer: 00:00:00</div>
+    <div id="timer">Timer: 00:00:00:000</div>
     <div id="results"></div>
+    
+    <!-- Botones para controlar el análisis -->
+    <button id="startBtn">Empezar análisis</button>
+    <button id="pauseBtn">Pausar</button>
+    <button id="resetBtn">Reiniciar</button>
+
     <script>
         const video = document.getElementById('video');
         const resultsDiv = document.getElementById('results');
@@ -49,7 +61,7 @@
 
         function startTimer() {
             startTime = Date.now();
-            timerInterval = setInterval(updateTimer, 1000);
+            timerInterval = setInterval(updateTimer, 100);
         }
 
         function stopTimer() {
@@ -58,14 +70,20 @@
 
         function updateTimer() {
             const elapsed = Date.now() - startTime;
+            const milliseconds = Math.floor(elapsed % 1000);
             const seconds = Math.floor(elapsed / 1000) % 60;
             const minutes = Math.floor(elapsed / (1000 * 60)) % 60;
             const hours = Math.floor(elapsed / (1000 * 60 * 60));
-            timerDiv.textContent = `Timer: ${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+
+            timerDiv.textContent = `Timer: ${pad(hours)}:${pad(minutes)}:${pad(seconds)}:${padMilliseconds(milliseconds)}`;
         }
 
         function pad(value) {
             return value.toString().padStart(2, '0');
+        }
+
+        function padMilliseconds(value) {
+            return value.toString().padStart(3, '0');
         }
 
         function captureFrame() {
@@ -135,17 +153,42 @@
             `;
         }
 
+        function startAnalysis() {
+            streaming = true;
+            startTimer();
+            captureFrame();
+        }
+
+        function pauseAnalysis() {
+            streaming = false;
+            stopTimer();
+        }
+
+        function resetAnalysis() {
+            streaming = false;
+            stopTimer();
+            timerDiv.textContent = 'Timer: 00:00:00:000';
+            resultsDiv.innerHTML = '';
+            fetch('http://192.168.1.25:8000/reset', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    console.log("Reset response:", data);
+                })
+                .catch(error => console.error("Error resetting:", error));
+        }
+
+        document.getElementById('startBtn').addEventListener('click', startAnalysis);
+        document.getElementById('pauseBtn').addEventListener('click', pauseAnalysis);
+        document.getElementById('resetBtn').addEventListener('click', resetAnalysis);
+
         // Escucha los mensajes desde el iframe
         window.addEventListener('message', (event) => {
-            if (event.origin !== 'http://IpComputadoraA:8000') return; // Cambia esto por la IP adecuada
+            if (event.origin !== 'http://192.168.1.25:8000') return;
             const message = event.data;
             if (message.command === 'start') {
-                streaming = true;
-                startTimer();
-                captureFrame();
+                startAnalysis();
             } else if (message.command === 'stop') {
-                streaming = false;
-                stopTimer();
+                pauseAnalysis();
             }
         });
     </script>
