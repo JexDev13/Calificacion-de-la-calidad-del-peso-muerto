@@ -1,6 +1,5 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 import cv2
 import numpy as np
 import pickle
@@ -20,9 +19,6 @@ app.add_middleware(
     allow_headers=["*"],  # Permite todos los encabezados
 )
 
-# Montar los archivos estáticos
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
 # Cargar modelos entrenados
 with open('proyecto1B.pkl', 'rb') as f:
     model = pickle.load(f)
@@ -32,12 +28,6 @@ with open('lean.pkl', 'rb') as f:
 
 with open('hips.pkl', 'rb') as f:
     hips_model = pickle.load(f)
-    
-# Estado para contar repeticiones
-rep_counter = {
-    "current_class": None,
-    "repetitions": 0
-}
 
 class PredictionRequest(BaseModel):
     image: bytes
@@ -49,22 +39,6 @@ async def predict(file: UploadFile = File(...)):
     image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
     results = process_image(image)
     return results
-
-@app.post("/start")
-async def start():
-    # Lógica para iniciar el modelo y el cronómetro
-    return {"message": "Started"}
-
-@app.post("/pause")
-async def pause():
-    # Lógica para pausar el modelo y el cronómetro
-    return {"message": "Paused"}
-
-@app.post("/reset")
-async def reset():
-    # Lógica para reiniciar el modelo y el cronómetro
-    return {"message": "Reset"}
-
 
 def process_image(image):
     pose = mp.solutions.pose.Pose(min_tracking_confidence=0.5, min_detection_confidence=0.5)
@@ -80,7 +54,7 @@ def process_image(image):
     lean_class = lean_model.predict(X)[0]
     hips_prob = np.array(hips_model.predict_proba(X)[0])
     hips_class = hips_model.predict(X)[0]
-    
+
     # Determinar el mensaje de consejo
     if hips_class == "narrow" and lean_class == "right":
         advice_text = "Necesitas ampliar tu postura para arreglarla e inclinarte hacia la izquierda para enderezar los hombros."
@@ -101,14 +75,6 @@ def process_image(image):
     elif hips_class == "wide" and lean_class == "left":
         advice_text = "Necesitas juntar los pies para fijar la postura e inclinarte hacia la derecha para enderezar los hombros."
 
-    # Actualizar contador de repeticiones
-    global rep_counter
-    if rep_counter["current_class"] == bodylang_class:
-        rep_counter["repetitions"] += 1
-    else:
-        rep_counter["current_class"] = bodylang_class
-        rep_counter["repetitions"] = 1
-
     return {
         "class": bodylang_class,
         "probability": bodylang_prob[bodylang_prob.argmax()],
@@ -117,7 +83,6 @@ def process_image(image):
         "hips_class": hips_class,
         "hips_prob": hips_prob[hips_prob.argmax()],
         "advice": advice_text,
-        "repetitions": rep_counter["repetitions"]
     }
 
 if __name__ == "__main__":

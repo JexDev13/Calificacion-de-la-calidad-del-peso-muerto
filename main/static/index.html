@@ -1,196 +1,50 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>AI Posture Analysis</title>
-    <style>
-        video {
-            border: 2px solid black;
-            width: 320px; /* Tamaño más pequeño */
-            height: auto;
-        }
-        #results {
-            margin-top: 20px;
-        }
-        #timer {
-            font-size: 1.2em;
-            margin-top: 10px;
-        }
-        button {
-            margin: 5px;
-            padding: 10px 20px;
-            font-size: 1em;
-            cursor: pointer;
-        }
-    </style>
+    <title>Video Capture</title>
 </head>
 <body>
-    <h1>AI Posture Analysis</h1>
-    <video id="video" autoplay></video>
-    <div id="timer">Timer: 00:00:00:000</div>
-    <div id="results"></div>
-    
-    <!-- Botones para controlar el análisis -->
-    <button id="startBtn">Empezar análisis</button>
-    <button id="pauseBtn">Pausar</button>
-    <button id="resetBtn">Reiniciar</button>
-
+    <h1>Video Capture</h1>
+    <video id="video" width="640" height="480" autoplay></video>
     <script>
         const video = document.getElementById('video');
-        const resultsDiv = document.getElementById('results');
-        const timerDiv = document.getElementById('timer');
-        let streaming = false;
-        let timerInterval;
-        let startTime;
 
-        const videoWidth = 400;  // Tamaño del video
-        const videoHeight = 320; // Tamaño del video
-
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            navigator.mediaDevices.getUserMedia({ video: { width: videoWidth, height: videoHeight } })
-                .then(stream => {
-                    video.srcObject = stream;
-                    video.play();
-                })
-                .catch(err => {
-                    console.error("Error accessing the camera: ", err);
-                });
-        } else {
-            alert("getUserMedia is not supported in this browser.");
-        }
-
-        function startTimer() {
-            startTime = Date.now();
-            timerInterval = setInterval(updateTimer, 100);
-        }
-
-        function stopTimer() {
-            clearInterval(timerInterval);
-        }
-
-        function updateTimer() {
-            const elapsed = Date.now() - startTime;
-            const milliseconds = Math.floor(elapsed % 1000);
-            const seconds = Math.floor(elapsed / 1000) % 60;
-            const minutes = Math.floor(elapsed / (1000 * 60)) % 60;
-            const hours = Math.floor(elapsed / (1000 * 60 * 60));
-
-            timerDiv.textContent = `Timer: ${pad(hours)}:${pad(minutes)}:${pad(seconds)}:${padMilliseconds(milliseconds)}`;
-        }
-
-        function pad(value) {
-            return value.toString().padStart(2, '0');
-        }
-
-        function padMilliseconds(value) {
-            return value.toString().padStart(3, '0');
-        }
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(err => {
+                console.error('Error accessing webcam: ' + err);
+            });
 
         function captureFrame() {
-            if (!streaming) return;
             const canvas = document.createElement('canvas');
-            canvas.width = videoWidth;
-            canvas.height = videoHeight;
-            const context = canvas.getContext('2d');
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-            // Dibuja los landmarks si están disponibles
-            if (window.landmarksData) {
-                drawLandmarks(context, window.landmarksData);
-            }
-
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
             canvas.toBlob(blob => {
                 sendFrame(blob);
             }, 'image/jpeg');
         }
 
-        function drawLandmarks(context, landmarks) {
-            context.strokeStyle = 'red';
-            context.fillStyle = 'red';
-            context.lineWidth = 2;
-
-            landmarks.forEach(landmark => {
-                const [x, y] = landmark;
-                context.beginPath();
-                context.arc(x, y, 5, 0, 2 * Math.PI);
-                context.fill();
-                context.stroke();
-            });
-        }
-
         function sendFrame(blob) {
             const formData = new FormData();
             formData.append('file', blob, 'frame.jpg');
-
             fetch('http://192.168.1.25:8000/predict', {
                 method: 'POST',
                 body: formData
             })
             .then(response => response.json())
             .then(data => {
-                displayResults(data);
-                setTimeout(captureFrame, 500); // Capture next frame after 0.5 second
+                console.log('Prediction:', data);
+                // Aquí puedes actualizar la interfaz con los resultados de la predicción
             })
             .catch(error => {
-                console.error("Error sending frame: ", error);
-                setTimeout(captureFrame, 1000); // Retry after 1 second in case of error
+                console.error('Error sending frame: ', error);
             });
         }
 
-        function displayResults(data) {
-            // Supongamos que la respuesta incluye landmarks
-            window.landmarksData = data.landmarks; // Guarda los landmarks globalmente
-
-            resultsDiv.innerHTML = `
-                <p>Class: ${data.class}</p>
-                <p>Probability: ${data.probability}</p>
-                <p>Lean Class: ${data.lean_class}</p>
-                <p>Lean Probability: ${data.lean_prob}</p>
-                <p>Hips Class: ${data.hips_class}</p>
-                <p>Hips Probability: ${data.hips_prob}</p>
-                <p>Advice: ${data.advice}</p>
-                <p>Repetitions: ${data.repetitions}</p>
-            `;
-        }
-
-        function startAnalysis() {
-            streaming = true;
-            startTimer();
-            captureFrame();
-        }
-
-        function pauseAnalysis() {
-            streaming = false;
-            stopTimer();
-        }
-
-        function resetAnalysis() {
-            streaming = false;
-            stopTimer();
-            timerDiv.textContent = 'Timer: 00:00:00:000';
-            resultsDiv.innerHTML = '';
-            fetch('http://192.168.1.25:8000/reset', { method: 'POST' })
-                .then(response => response.json())
-                .then(data => {
-                    console.log("Reset response:", data);
-                })
-                .catch(error => console.error("Error resetting:", error));
-        }
-
-        document.getElementById('startBtn').addEventListener('click', startAnalysis);
-        document.getElementById('pauseBtn').addEventListener('click', pauseAnalysis);
-        document.getElementById('resetBtn').addEventListener('click', resetAnalysis);
-
-        // Escucha los mensajes desde el iframe
-        window.addEventListener('message', (event) => {
-            if (event.origin !== 'http://192.168.1.25:8000') return;
-            const message = event.data;
-            if (message.command === 'start') {
-                startAnalysis();
-            } else if (message.command === 'stop') {
-                pauseAnalysis();
-            }
-        });
+        setInterval(captureFrame, 1000); // Captura un frame cada segundo
     </script>
 </body>
 </html>
