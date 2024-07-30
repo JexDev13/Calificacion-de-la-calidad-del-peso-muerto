@@ -54,6 +54,7 @@
 
         navigator.mediaDevices.getUserMedia({ video: true })
             .then(stream => {
+                startCapture();
                 video.srcObject = stream;
             })
             .catch(err => {
@@ -137,6 +138,7 @@
                 String(seconds).padStart(2, '0') + '.' +
                 String(milliseconds).padStart(3, '0');
         }
+
 
         startButton.addEventListener('click', startCapture);
         resetButton.addEventListener('click', resetCapture);
