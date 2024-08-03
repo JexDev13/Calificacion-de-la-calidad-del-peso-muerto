@@ -1,25 +1,23 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-import cv2
 import numpy as np
-import pickle
 import pandas as pd
-from pydantic import BaseModel
-from landmarks import landmarks
-import mediapipe as mp
+import cv2
+from mediapipe import solutions
+import pickle
 
 app = FastAPI()
 
-# Configuración de CORS
+# Habilitar CORS para cualquier solicitud
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Permite solicitudes de cualquier origen
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],  # Permite todos los métodos (POST, GET, etc.)
-    allow_headers=["*"],  # Permite todos los encabezados
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# Cargar modelos entrenados
+# Cargar los modelos preentrenados
 with open('proyecto1B.pkl', 'rb') as f:
     model = pickle.load(f)
 
@@ -29,61 +27,124 @@ with open('lean.pkl', 'rb') as f:
 with open('hips.pkl', 'rb') as f:
     hips_model = pickle.load(f)
 
-class PredictionRequest(BaseModel):
-    image: bytes
+mp_drawing = solutions.drawing_utils
+mp_pose = solutions.pose
+pose = mp_pose.Pose(min_tracking_confidence=0.5, min_detection_confidence=0.5)
+
+current_stage = ''
+
+
+def process_image(image):
+    global current_stage
+
+    # Convertir la imagen de BGR a RGB
+    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    
+    # Procesar la imagen para obtener los landmarks
+    results = pose.process(image_rgb)
+
+    # Dibujar los landmarks en la imagen
+    mp_drawing.draw_landmarks(image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS,
+                              mp_drawing.DrawingSpec(color=(0, 0, 255), thickness=2, circle_radius=2),
+                              mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=2, circle_radius=2))
+
+    # Inicializar resultados por defecto
+    bodylang_prob = 0
+    bodylang_class = ''
+    hips_class = 'neutral'
+    hips_prob = 0
+    lean_class = 'neutral'
+    lean_prob = 0
+    advice_text = ''
+    landmarks = []
+
+    try:
+        # Extraer coordenadas y visibilidad de cada landmark
+        row = np.array([[res.x, res.y, res.z, res.visibility] for res in results.pose_landmarks.landmark]).flatten().tolist()
+        X = pd.DataFrame([row])
+
+        # Predecir probabilidad y clase de la postura
+        bodylang_prob = model.predict_proba(X)[0]
+        bodylang_class = model.predict(X)[0]
+        
+        # Obtener la probabilidad más alta
+        max_bodylang_prob = max(bodylang_prob)
+
+        # Actualización de la lógica de estado
+        if bodylang_class == "down" and bodylang_prob[bodylang_prob.argmax()] > 0.7:
+            current_stage = "down"
+        elif current_stage == "down" and bodylang_class == "up" and bodylang_prob[bodylang_prob.argmax()] > 0.7:
+            current_stage = "up"
+
+        # Predicción del análisis de forma
+        # Para lean_prob
+        lean_prob = np.array(lean_model.predict_proba(X)[0])
+        lean_class = lean_model.predict(X)[0]
+        max_lean_prob = max(lean_prob)
+
+        # Para hips_prob
+        hips_prob = np.array(hips_model.predict_proba(X)[0])
+        hips_class = hips_model.predict(X)[0]
+        max_hips_prob = max(hips_prob)
+
+       # Guardar los landmarks para retornarlos en la respuesta
+        landmarks = [{
+            'x': res.x,
+            'y': res.y,
+            'z': res.z,
+            'visibility': res.visibility
+        } for res in results.pose_landmarks.landmark]
+
+        # Determinar el mensaje de consejo
+        if hips_class == "narrow" and lean_class == "right":
+            advice_text = "Necesitas ampliar tu postura para arreglarla e inclinarte hacia la izquierda para enderezar los hombros."
+        elif hips_class == "narrow" and lean_class == "neutral":
+            advice_text = "Necesitas ampliar tu postura para arreglarla y nada con tu inclinación, estás parejo."
+        elif hips_class == "narrow" and lean_class == "left":
+            advice_text = "Necesitas ampliar tu postura para arreglarla e inclinarte hacia la izquierda para enderezar los hombros."
+        elif hips_class == "neutral" and lean_class == "right":
+            advice_text = "No necesitas hacer nada para arreglar tu postura, pero inclinarse hacia la izquierda para enderezar los hombros."
+        elif hips_class == "neutral" and lean_class == "neutral":
+            advice_text = "No necesitas hacer nada para arreglar tu postura y nada con tu inclinación, estás parejo."
+        elif hips_class == "neutral" and lean_class == "left":
+            advice_text = "No necesitas hacer nada para arreglar tu postura, pero inclinarse hacia la derecha para enderezar los hombros."
+        elif hips_class == "wide" and lean_class == "right":
+            advice_text = "Necesitas juntar los pies para fijar la postura e inclinarte hacia la izquierda para enderezar los hombros."
+        elif hips_class == "wide" and lean_class == "neutral":
+            advice_text = "Necesitas juntar los pies para fijar la postura y nada con tu inclinación, estás parejo."
+        elif hips_class == "wide" and lean_class == "left":
+            advice_text = "Necesitas juntar los pies para fijar la postura e inclinarte hacia la derecha para enderezar los hombros."
+
+    except Exception as e:
+        print("Error al procesar la imagen:", e)
+
+    # Retornar los resultados en un diccionario
+    return {
+        "probability": max_bodylang_prob,
+        "class": bodylang_class,
+        "wide": hips_class,
+        "wide_probability": max_hips_prob,
+        "lean": lean_class,
+        "lean_probability": max_lean_prob,
+        "advice": advice_text,
+        "landmarks": landmarks
+    }
+
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
     contents = await file.read()
-    nparr = np.fromstring(contents, np.uint8)
+    nparr = np.frombuffer(contents, np.uint8)
     image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
     results = process_image(image)
     return results
 
-def process_image(image):
-    pose = mp.solutions.pose.Pose(min_tracking_confidence=0.5, min_detection_confidence=0.5)
-    results = pose.process(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
 
-    row = np.array([[res.x, res.y, res.z, res.visibility] for res in results.pose_landmarks.landmark]).flatten().tolist()
-    X = pd.DataFrame([row], columns=landmarks)
-    bodylang_prob = model.predict_proba(X)[0]
-    bodylang_class = model.predict(X)[0]
-
-    # Predicción del análisis de forma usando los modelos entrenados
-    lean_prob = np.array(lean_model.predict_proba(X)[0])
-    lean_class = lean_model.predict(X)[0]
-    hips_prob = np.array(hips_model.predict_proba(X)[0])
-    hips_class = hips_model.predict(X)[0]
-
-    # Determinar el mensaje de consejo
-    if hips_class == "narrow" and lean_class == "right":
-        advice_text = "Necesitas ampliar tu postura para arreglarla e inclinarte hacia la izquierda para enderezar los hombros."
-    elif hips_class == "narrow" and lean_class == "neutral":
-        advice_text = "Necesitas ampliar tu postura para arreglarla y nada con tu inclinación, estás parejo."
-    elif hips_class == "narrow" and lean_class == "left":
-        advice_text = "Necesitas ampliar tu postura para arreglarla e inclinarte hacia la izquierda para enderezar los hombros."
-    elif hips_class == "neutral" and lean_class == "right":
-        advice_text = "No necesitas hacer nada para arreglar tu postura PERO inclinarse hacia la izquierda para enderezar los hombros."
-    elif hips_class == "neutral" and lean_class == "neutral":
-        advice_text = "No necesitas hacer nada para arreglar tu postura y nada con tu inclinación, estás parejo."
-    elif hips_class == "neutral" and lean_class == "left":
-        advice_text = "No necesitas hacer nada para arreglar tu postura PERO inclinarse hacia la derecha para enderezar los hombros."
-    elif hips_class == "wide" and lean_class == "right":
-        advice_text = "Necesitas juntar los pies para fijar la postura e inclinarte hacia la izquierda para enderezar los hombros."
-    elif hips_class == "wide" and lean_class == "neutral":
-        advice_text = "Necesitas juntar los pies para fijar la postura y nada con tu inclinación, estás parejo."
-    elif hips_class == "wide" and lean_class == "left":
-        advice_text = "Necesitas juntar los pies para fijar la postura e inclinarte hacia la derecha para enderezar los hombros."
-
-    return {
-        "class": bodylang_class,
-        "probability": bodylang_prob[bodylang_prob.argmax()],
-        "lean_class": lean_class,
-        "lean_prob": lean_prob[lean_prob.argmax()],
-        "hips_class": hips_class,
-        "hips_prob": hips_prob[hips_prob.argmax()],
-        "advice": advice_text,
-    }
+@app.post("/reset")
+async def reset():
+    global current_stage
+    current_stage = ''
+    return {"message": "Counter and state have been reset."}
 
 if __name__ == "__main__":
     import uvicorn

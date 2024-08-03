@@ -7,17 +7,14 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
-            background-color: #0f1218;
+            background-color: #0f1218; /*#1a202c*/
             color: #cbd5e0;
         }
     </style>
 </head>
 <body class="flex flex-col items-center justify-center min-h-screen">
     <h1 class="text-3xl font-bold mb-4">Video Capture</h1>
-    <div class="relative">
-        <video id="video" width="640" height="480" autoplay class="border-4 border-gray-700 rounded mb-4"></video>
-        <canvas id="canvas" width="640" height="480" class="absolute top-0 left-0"></canvas>
-    </div>
+    <video id="video" width="640" height="480" autoplay class="border-4 border-gray-700 rounded mb-4"></video>
     
     <div id="controls" class="flex flex-col items-center">
         <button id="startButton" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-2">Empezar</button>
@@ -34,13 +31,10 @@
         <p class="mb-2"><strong>Hips Class:</strong> <span id="hips_class"></span></p>
         <p class="mb-2"><strong>Hips Probability:</strong> <span id="hips_prob"></span></p>
         <p class="mb-2"><strong>Advice:</strong> <span id="advice"></span></p>
-        <p class="mb-2"><strong>Counter:</strong> <span id="change_count">0</span></p>
     </div>
 
     <script>
         const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
         const classSpan = document.getElementById('class');
         const probabilitySpan = document.getElementById('probability');
         const leanClassSpan = document.getElementById('lean_class');
@@ -48,7 +42,6 @@
         const hipsClassSpan = document.getElementById('hips_class');
         const hipsProbSpan = document.getElementById('hips_prob');
         const adviceSpan = document.getElementById('advice');
-        const changeCountSpan = document.getElementById('change_count');
         const startButton = document.getElementById('startButton');
         const resetButton = document.getElementById('resetButton');
         const timerElement = document.getElementById('timer');
@@ -56,8 +49,6 @@
         let capturing = false;
         let startTime;
         let timerInterval;
-        let currentStage = null;
-        let counter = 0;
 
         navigator.mediaDevices.getUserMedia({ video: true })
             .then(stream => {
@@ -99,53 +90,11 @@
         function updateResults(data) {
             classSpan.textContent = data.class;
             probabilitySpan.textContent = data.probability;
-            leanClassSpan.textContent = data.lean;
-            leanProbSpan.textContent = data.lean_probability;
-            hipsClassSpan.textContent = data.wide;
-            hipsProbSpan.textContent = data.wide_probability;
+            leanClassSpan.textContent = data.lean_class;
+            leanProbSpan.textContent = data.lean_prob;
+            hipsClassSpan.textContent = data.hips_class;
+            hipsProbSpan.textContent = data.hips_prob;
             adviceSpan.textContent = data.advice;
-
-            drawLandmarks(data.landmarks);
-            updateCounter(data.class);
-        }
-
-        function updateCounter(newClass) {
-            if (newClass !== currentStage) {
-                currentStage = newClass;
-                counter += 1;
-                changeCountSpan.textContent = counter;
-            }
-        }
-
-        function drawLandmarks(landmarks) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            if (!landmarks) return;
-
-            // Dibujar puntos
-            landmarks.forEach((landmark) => {
-                ctx.beginPath();
-                ctx.arc(landmark.x * canvas.width, landmark.y * canvas.height, 5, 0, 2 * Math.PI);
-                ctx.fillStyle = "red";
-                ctx.fill();
-            });
-
-            // Dibujar conexiones
-            landmarks.forEach((landmark, index) => {
-                if (landmark.connected) {
-                    landmark.connected.forEach((connectedIndex) => {
-                        const connectedLandmark = landmarks[connectedIndex];
-                        if (connectedLandmark) {
-                            ctx.beginPath();
-                            ctx.moveTo(landmark.x * canvas.width, landmark.y * canvas.height);
-                            ctx.lineTo(connectedLandmark.x * canvas.width, connectedLandmark.y * canvas.height);
-                            ctx.strokeStyle = "green";
-                            ctx.lineWidth = 2;
-                            ctx.stroke();
-                        }
-                    });
-                }
-            });
         }
 
         function startCapture() {
@@ -170,10 +119,6 @@
             hipsClassSpan.textContent = " ";
             hipsProbSpan.textContent = " ";
             adviceSpan.textContent = " ";
-            changeCountSpan.textContent = "0";
-            ctx.clearRect(0, 0, canvas.width, canvas.height); // Limpiar el canvas
-            currentStage = null;
-            counter = 0;
         }
 
         function updateTimer() {
@@ -191,6 +136,7 @@
                 String(seconds).padStart(2, '0') + '.' +
                 String(milliseconds).padStart(3, '0');
         }
+
 
         startButton.addEventListener('click', startCapture);
         resetButton.addEventListener('click', resetCapture);
