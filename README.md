@@ -41,7 +41,16 @@ La arquitectura del proyecto consta de dos componentes principales:
 Servidor FastAPI (Computadora A): Este servidor recibe las imágenes, realiza el análisis de postura y devuelve los resultados.
 Interfaz de Usuario (Computadora B): Captura el video de la cámara, muestra los resultados y permite iniciar o reiniciar el análisis.
 
-### Ejecutar el Servidor FastAPI (Computadora A)
+
+
+### Configuración de Red Local
+Para conectar ambas computadoras en una red local con IP estática, se deben seguir los siguientes pasos:
+
+1. **Puerta de enlace predeterminada**: 192.168.1.10
+#### Computadora A
+* IP: 192.168.1.25
+
+#### Ejecutar el Servidor FastAPI (Computadora A)
 Para ejecutar el servidor FastAPI, utiliza el siguiente comando:
 
 ```bash
@@ -50,6 +59,12 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 ### Ejecutar la Interfaz de Usuario (Computadora B)
 Abre el archivo index.html en tu navegador web. Asegúrate de estar en la misma red local que la Computadora A. La interfaz de usuario se conecta al servidor FastAPI en la dirección localhost:8000.
+
+#### Computadora B
+* IP: 192.168.1.10
+
+#### Ejecutar el Servidor PythonWeb (Computadora B)
+Para ejecutar el servidor PythonWeb, utiliza el siguiente comando:
 
 ```bash
 python -m http.server 8000
@@ -62,3 +77,5 @@ python -m http.server 8000
 ```bash
 ipconfig
 ```
+
+
