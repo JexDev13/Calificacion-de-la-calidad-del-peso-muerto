@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video Capture</title>
+    <title>Deadlift Quality</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -12,29 +13,78 @@
         }
     </style>
 </head>
+
 <body class="flex flex-col items-center justify-center min-h-screen">
-    <h1 class="text-3xl font-bold mb-4">Video Capture</h1>
-    <div class="relative">
-        <video id="video" width="640" height="480" autoplay class="border-4 border-gray-700 rounded mb-4"></video>
-        <canvas id="canvas" width="640" height="480" class="absolute top-0 left-0"></canvas>
+    <h1 class="text-3xl font-bold mb-4">Deadlift Quality</h1>
+    <div class="relative flex items-center space-x-4 p-4">
+        <p class="font-bold text-xl">Timmer: </p>
+        <div id="timer" class="text-3xl font-mono">00:00:00.000</div>
+        <p></p>
+        <p></p>
+        <p></p>
+        <p class="font-bold text-xl">Repetitions:</p>
+        <div class="text-3xl font-mono" id="change_count">0</div>
     </div>
-    
-    <div id="controls" class="flex flex-col items-center">
-        <button id="startButton" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-2">Empezar</button>
-        <button id="resetButton" disabled class="bg-gray-500 text-white font-bold py-2 px-4 rounded mb-2">Reiniciar</button>
-        <div id="timer" class="text-2xl font-mono mt-4">00:00:00.000</div>
+
+    <div class="flex flex-col items-center mb-5">
+        <div class="flex items-center">
+            <div class="relative flex items-center">
+                <div id="barClass"
+                    class="w-14 h-[480px] bg-gradient-to-b from-blue-500 to-green-500 flex flex-col items-center justify-between pr-10">
+                    <div id="up" class="ml-2 text-white font-bold text-center">UP</div>
+                    <div id="down" class="ml-10 text-white font-bold text-center">DOWN</div>
+                </div>
+                <div id="arrow" class="absolute left-[-32px] text-2xl">➤</div>
+            </div>
+            <div class="ml-5 relative">
+                <!--<p class="mb-2"><strong>Class:</strong> <span id="class"></span></p>
+                <p class="mb-2"><strong>Probability:</strong> <span id="probability"></span></p>-->
+                <video id="video" width="640" height="480" autoplay
+                    style="border: 12px solid #4a4a4a; border-radius: 0.375rem;"></video>
+                <canvas id="canvas" width="640" height="480" class="absolute top-0 left-0"></canvas>
+            </div>
+        </div>
     </div>
-    
-    <div id="results" class="mt-8 text-center">
+
+    <div id="results" class="text-center">
         <h2 class="text-2xl font-semibold mb-4">Prediction Results</h2>
-        <p class="mb-2"><strong>Class:</strong> <span id="class"></span></p>
-        <p class="mb-2"><strong>Probability:</strong> <span id="probability"></span></p>
-        <p class="mb-2"><strong>Lean Class:</strong> <span id="lean_class"></span></p>
-        <p class="mb-2"><strong>Lean Probability:</strong> <span id="lean_prob"></span></p>
-        <p class="mb-2"><strong>Hips Class:</strong> <span id="hips_class"></span></p>
-        <p class="mb-2"><strong>Hips Probability:</strong> <span id="hips_prob"></span></p>
-        <p class="mb-2"><strong>Advice:</strong> <span id="advice"></span></p>
-        <p class="mb-2"><strong>Counter:</strong> <span id="change_count">0</span></p>
+        <div class="p-2 inline-block">
+            <div class="flex space-x-4">
+                <div class="p-2 h-[350px] w-[300px] flex flex-col items-center justify-center h-[200px]">
+                    <p class="text-center mb-2">
+                        <strong class="text-2xl">Advice:</strong>
+                        <br>
+                        <span id="advice" class="text-yellow-500 text-3xl flex items-center justify-center"> </span>
+                    </p>
+                </div>
+                <div class="p-2">
+                    <div
+                        style="border: 6px solid #4a4a4a; border-radius: 0.375rem; display: flex; flex-direction: column; align-items: center; position: relative; padding-right: 70px;">
+                        <img id="imagePosition" src="/main/static/img/neutral-neutral.png" alt="Neutral" class="h-[350px] w-auto"></img>
+                        <div
+                            class="absolute top-1/2 right-[15px] transform -translate-y-1/2 flex flex-col items-start space-y-2 p-4">
+                            <p class="mb-1 text-left"><span id="lean_class"></span></p>
+                            <p class="text-left"><span id="lean_prob"></span></p>
+                        </div>
+                        <div class="flex flex-col items-center mb-2">
+                            <p class="mb-1"><span id="hips_class"></span></p>
+                            <p><span id="hips_prob"></span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="controls" class="flex flex-row justify-center">
+            <button id="startButton"
+                class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mx-2">Empezar</button>
+            <button id="resetButton" disabled
+                class="bg-gray-500 text-white font-bold py-2 px-4 rounded mx-2">Reiniciar</button>
+        </div>
+
+        <p class="mb-2" style="display: none;"><strong>Class:</strong> <span id="class"></span></p>
+        <p class="mb-2" style="display: none;"><strong>Probability:</strong> <span id="probability"></span></p>
+
     </div>
 
     <script>
@@ -52,7 +102,8 @@
         const startButton = document.getElementById('startButton');
         const resetButton = document.getElementById('resetButton');
         const timerElement = document.getElementById('timer');
-        
+        const arrow = document.getElementById('arrow');
+
         let capturing = false;
         let startTime;
         let timerInterval;
@@ -86,14 +137,14 @@
                 method: 'POST',
                 body: formData
             })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Prediction:', data);
-                updateResults(data);
-            })
-            .catch(error => {
-                console.error('Error sending frame: ', error);
-            });
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Prediction:', data);
+                    updateResults(data);
+                })
+                .catch(error => {
+                    console.error('Error sending frame: ', error);
+                });
         }
 
         function updateResults(data) {
@@ -105,8 +156,109 @@
             hipsProbSpan.textContent = data.wide_probability;
             adviceSpan.textContent = data.advice;
 
+            updateVideoBorder(data.lean_probability, data.wide_probability, data.class);
+            updateArrowPosition(data.probability);
+            changeColorAnalysis(data.lean_probability, data.wide_probability, data.lean, data.wide);
+            updateImage(data.wide, data.lean);
+
             drawLandmarks(data.landmarks);
             updateCounter(data.class);
+        }
+
+        function updateImage(wide, lean) {
+            if (wide === 'narrow' && lean === 'left') {
+                imagePosition.src = '/main/static/img/narrow-left.png';
+            }else if (wide === 'narrow' && lean === 'neutral') {
+                imagePosition.src = '/main/static/img/narrow-neutral.png';
+            }else if (wide === 'narrow' && lean === 'right') {
+                imagePosition.src = '/main/static/img/narrow-right.png';
+            }else if (wide === 'neutral' && lean === 'left') {
+                imagePosition.src = '/main/static/img/neutral-left.png';
+            }else if (wide === 'neutral' && lean === 'neutral') {
+                imagePosition.src = '/main/static/img/neutral-neutral.png';
+            }else if (wide === 'neutral' && lean === 'right') {
+                imagePosition.src = '/main/static/img/neutral-right.png';
+            }else if (wide === 'wide' && lean === 'left') {
+                imagePosition.src = '/main/static/img/wide-left.png';
+            }else if (wide === 'wide' && lean === 'neutral') {
+                imagePosition.src = '/main/static/img/wide-neutral.png';
+            }else if (wide === 'wide' && lean === 'right') {
+                imagePosition.src = '/main/static/img/wide-rigth.png';
+            }
+        }
+
+        function changeColorAnalysis(leanProp, hipsProp, leanClass, hipsClass) {
+            // Cambiar color de lean_class y lean_prob
+            switch (leanClass) {
+                case "left":
+                case "right":
+                leanClassSpan.style.color = 'red';
+                    setProbabilityColor(leanProp, leanProbSpan);
+                    break;
+                case "neutral":
+                leanClassSpan.style.color = 'green';
+                    setProbabilityColor(leanProp, leanProbSpan);
+                    break;
+                default:
+                    console.error('Valor de leanClass no reconocido:', leanProbSpan);
+                    break;
+            }
+
+            // Cambiar color de hips_class y hips_prob
+            switch (hipsClass) {
+                case "wide":
+                case "narrow":
+                    hipsClassSpan.style.color = 'red';
+                    setProbabilityColor(hipsProp, hipsProbSpan);
+                    break;
+                case "neutral":
+                    hipsClassSpan.style.color = 'green';
+                    setProbabilityColor(hipsProp, hipsProbSpan);
+                    break;
+                default:
+                    console.error('Valor de hipsClass no reconocido:', hipsClass);
+                    break;
+            }
+        }
+
+        function setProbabilityColor(probability, element) {
+            if (probability < 0.4) {
+                element.style.color = 'red';
+            } else if (probability <= 0.7) {
+                element.style.color = 'yellow';
+            } else {
+                element.style.color = 'green';
+            }
+        }
+
+        function updateVideoBorder(leanProb, hipsProb, classProp) {
+            const leanThreshold = 0.4;
+            const hipsThreshold = 0.4;
+            const classThreshold = 0.5;
+            const yellowThreshold = 0.7;
+
+            let borderColor = '#4a4a4a'; // Default border color
+
+            if (leanProb <= leanThreshold || hipsProb <= hipsThreshold || classProp <= classThreshold) {
+                borderColor = 'red';
+            } else if (leanProb <= yellowThreshold || hipsProb <= yellowThreshold || classProp <= yellowThreshold) {
+                borderColor = 'yellow';
+            } else {
+                borderColor = 'green';
+            }
+
+            video.style.borderColor = borderColor;
+        }
+
+        function updateArrowPosition(probability) {
+            const barClass = document.getElementById('barClass');
+            const barHeight = barClass.clientHeight;
+            const arrowHeight = arrow.clientHeight;
+            const position = barHeight * (1 - probability); // Calculate position based on probability
+
+            // Ajusta la posición del arrow según el valor de probability
+            arrow.style.top = `${Math.min(position, barHeight - arrowHeight)}px`; // Posiciona el arrow
+            arrow.style.bottom = `${Math.max(0, barHeight - position - arrowHeight)}px`; // Posiciona el arrow
         }
 
         function updateCounter(newClass) {
@@ -119,14 +271,14 @@
 
         function drawLandmarks(landmarks) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
+
             if (!landmarks) return;
 
             // Dibujar puntos
             landmarks.forEach((landmark) => {
                 ctx.beginPath();
                 ctx.arc(landmark.x * canvas.width, landmark.y * canvas.height, 5, 0, 2 * Math.PI);
-                ctx.fillStyle = "red";
+                ctx.fillStyle = "blue";
                 ctx.fill();
             });
 
@@ -174,6 +326,7 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height); // Limpiar el canvas
             currentStage = null;
             counter = 0;
+            video.style.borderColor = '#4a4a4a'; // Reset border color
         }
 
         function updateTimer() {
@@ -185,7 +338,7 @@
             const seconds = Math.floor((elapsedTime % (1000 * 60)) / 1000);
             const milliseconds = elapsedTime % 1000;
 
-            timerElement.textContent = 
+            timerElement.textContent =
                 String(hours).padStart(2, '0') + ':' +
                 String(minutes).padStart(2, '0') + ':' +
                 String(seconds).padStart(2, '0') + '.' +
@@ -196,4 +349,5 @@
         resetButton.addEventListener('click', resetCapture);
     </script>
 </body>
+
 </html>

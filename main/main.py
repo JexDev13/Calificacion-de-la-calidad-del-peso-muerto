@@ -97,23 +97,23 @@ def process_image(image):
 
         # Determinar el mensaje de consejo
         if hips_class == "narrow" and lean_class == "right":
-            advice_text = "Necesitas ampliar tu postura para arreglarla e inclinarte hacia la izquierda para enderezar los hombros."
+            advice_text = "Separa los pies e inclinate a la izquierda."
         elif hips_class == "narrow" and lean_class == "neutral":
-            advice_text = "Necesitas ampliar tu postura para arreglarla y nada con tu inclinación, estás parejo."
+            advice_text = "Separa los pies"
         elif hips_class == "narrow" and lean_class == "left":
-            advice_text = "Necesitas ampliar tu postura para arreglarla e inclinarte hacia la izquierda para enderezar los hombros."
+            advice_text = "Separa los pies e inclinate a la derecha."
         elif hips_class == "neutral" and lean_class == "right":
-            advice_text = "No necesitas hacer nada para arreglar tu postura, pero inclinarse hacia la izquierda para enderezar los hombros."
+            advice_text = "Inclinate a la izquierda"
         elif hips_class == "neutral" and lean_class == "neutral":
-            advice_text = "No necesitas hacer nada para arreglar tu postura y nada con tu inclinación, estás parejo."
+            advice_text = "Perfecto"
         elif hips_class == "neutral" and lean_class == "left":
-            advice_text = "No necesitas hacer nada para arreglar tu postura, pero inclinarse hacia la derecha para enderezar los hombros."
+            advice_text = "Inclinate a la derecha."
         elif hips_class == "wide" and lean_class == "right":
-            advice_text = "Necesitas juntar los pies para fijar la postura e inclinarte hacia la izquierda para enderezar los hombros."
+            advice_text = "Junta los pies e inclinate a la izquierda."
         elif hips_class == "wide" and lean_class == "neutral":
-            advice_text = "Necesitas juntar los pies para fijar la postura y nada con tu inclinación, estás parejo."
+            advice_text = "Junta los pies"
         elif hips_class == "wide" and lean_class == "left":
-            advice_text = "Necesitas juntar los pies para fijar la postura e inclinarte hacia la derecha para enderezar los hombros."
+            advice_text = "Junta los pies e inclinate a la derecha."
 
     except Exception as e:
         print("Error al procesar la imagen:", e)
